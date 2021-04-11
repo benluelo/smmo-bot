@@ -1,7 +1,8 @@
-
+use chrono::{serde::ts_seconds_option, DateTime, Duration, Utc};
 use serde::Deserialize;
 use serenity::builder::CreateEmbed;
 
+use crate::smmo::date_time::*;
 use crate::smmo::SmmoModel;
 
 #[derive(Debug, Deserialize)]
@@ -29,24 +30,32 @@ pub(crate) struct SmmoPlayer {
     #[serde(deserialize_with = "super::bool_from_int")]
     safe_mode: bool,
     #[serde(rename = "safeModeTime")]
-    safe_mode_time: Option<u64>,
-    background : u32,
-    membership : u32,
-    guild: SmmoPlayerGuild,
+    #[serde(
+        deserialize_with = "deserialize_option_datefmt",
+        serialize_with = "serialize_option_datefmt"
+    )]
+    safe_mode_time: Option<DateTime<Utc>>,
+    background: u32,
+    membership: u32,
+    guild: Option<SmmoPlayerGuild>,
 }
 
 impl SmmoModel for SmmoPlayer {
     const TYPE_NAME: &'static str = "SmmoPlayer";
+
     fn to_embed<'a, 'b>(&'a self, embed: &'b mut CreateEmbed) -> &'b mut CreateEmbed {
+        let safe_mode_response = match (self.safe_mode, self.safe_mode_time) {
+            (true, None) => "This player is permanently in safe mode.".to_string(),
+            (true, Some(expiry)) => {
+                format!("This player's safe mod expires in {}.", Utc::now() - expiry)
+            }
+            (false, _) => "This player is not currently in safe mode.".into(),
+        };
         embed
             .title(&*self.name)
-            .description(if self.safe_mode {
-                "You are currently in safe mode."
-            } else {
-                "You are not currently in safe mode."
-            })
+            .description(safe_mode_response)
             .field(
-                "General information",
+                "General",
                 format!("Level: {}\nGold: {}", self.level, self.gold),
                 true,
             )
@@ -58,6 +67,14 @@ impl SmmoModel for SmmoPlayer {
                 ),
                 true,
             )
+    }
+
+    fn to_field(&self) -> (String, String, bool) {
+        (
+            self.name.clone(),
+            format!("Level: {}\nGold: {}", self.level, self.gold),
+            true,
+        )
     }
 }
 

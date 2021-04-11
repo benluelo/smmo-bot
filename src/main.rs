@@ -1,6 +1,13 @@
-use std::{fmt::Display, marker::PhantomData};
+#![feature(try_trait)]
 
-use crate::{general::*, smmo::SmmoModel};
+use std::{error::Error, fmt::Display, marker::PhantomData};
+
+use std::{fmt::Debug, ops::Try};
+
+use crate::{
+    general::*,
+    smmo::{world_boss::WorldBoss, SmmoModel},
+};
 use dotenv::dotenv;
 use log::LevelFilter;
 use log4rs::{
@@ -91,7 +98,6 @@ async fn main() {
 }
 
 fn build_log_config() -> Config {
-    
     Config::builder()
         .appender(
             Appender::builder().build(
@@ -139,6 +145,7 @@ fn build_command_framework() -> StandardFramework {
             c.prefix("$");
             c.with_whitespace(true)
         })
+        .after(after_hook)
         .group(&GENERAL_GROUP)
 }
 
@@ -167,7 +174,7 @@ impl SmmoClient {
         }
     }
 
-    pub(crate) async fn get_player_by_id(&self, smmo_id: String) -> SmmoResult<SmmoPlayer> {
+    pub(crate) async fn get_player_by_smmo_id(&self, smmo_id: String) -> SmmoResult<SmmoPlayer> {
         let url = format!("https://api.simple-mmo.com/v1/player/info/{}", smmo_id);
         match self
             .inner
@@ -179,10 +186,42 @@ impl SmmoClient {
             Ok(res) => {
                 // dbg!(&res.text().await);
                 // SmmoResult::InternalError
+                let req_url = res.url().to_string();
                 match res.text().await {
                     Ok(text) => match serde_json::from_str::<SmmoResult<SmmoPlayer>>(&*text) {
                         Ok(json) => json,
-                        Err(why) => SmmoResult::Err(SmmoError::JsonDecodeError(text)),
+                        Err(why) => SmmoResult::Err(SmmoError::JsonDecodeError(text, req_url)),
+                    },
+                    Err(why) => {
+                        log::error!(target: "smmo_api", "url: {}, error: {}", url, why.to_string());
+                        SmmoResult::Err(SmmoError::ApiError(why))
+                    }
+                }
+            }
+            Err(why) => {
+                log::error!(target: "smmo_api", "url: {}, error: {}", url, why.to_string());
+                SmmoResult::Err(SmmoError::InternalError)
+            }
+        }
+    }
+
+    pub(crate) async fn get_world_bosses(&self) -> SmmoResult<Vec<WorldBoss>> {
+        let url = "https://api.simple-mmo.com/v1/worldboss/all";
+        match self
+            .inner
+            .post(&*url)
+            .query(&[("api_key", &*self.api_key)])
+            .send()
+            .await
+        {
+            Ok(res) => {
+                // dbg!(&res.text().await);
+                // SmmoResult::InternalError
+                let req_url = res.url().to_string();
+                match res.text().await {
+                    Ok(text) => match serde_json::from_str::<SmmoResult<Vec<WorldBoss>>>(&*text) {
+                        Ok(json) => json,
+                        Err(why) => SmmoResult::Err(SmmoError::JsonDecodeError(text, req_url)),
                     },
                     Err(why) => {
                         log::error!(target: "smmo_api", "url: {}, error: {}", url, why.to_string());
@@ -199,10 +238,18 @@ impl SmmoClient {
 }
 
 #[hook]
-async fn after_hook(_: &Context, _: &Message, cmd_name: &str, error: Result<(), CommandError>) {
+async fn after_hook(ctx: &Context, msg: &Message, cmd_name: &str, res: Result<(), CommandError>) {
     //  Print out an error if it happened
-    if let Err(why) = error {
-        println!("Error in {}: {:?}", cmd_name, why);
+    if let Err(err) = res {
+        let _ = msg
+            .channel_id
+            .send_message(&ctx.http, |cm| {
+                cm.embed(|e| {
+                    e.title("Uh-oh!")
+                        .description(&*format!("Something went wrong!\n\nError: {}", err))
+                })
+            })
+            .await;
     }
 }
 
@@ -212,6 +259,39 @@ pub enum SmmoResult<T: SmmoModel> {
     Ok(T),
     Err(SmmoError<T>),
 }
+
+impl<T: SmmoModel> Try for SmmoResult<T> {
+    type Ok = T;
+
+    type Error = SmmoError<T>;
+
+    fn into_result(self) -> Result<<SmmoResult<T> as Try>::Ok, Self::Error> {
+        match self {
+            SmmoResult::Ok(ok) => Ok(ok),
+            SmmoResult::Err(err) => Err(err),
+        }
+    }
+
+    fn from_error(v: Self::Error) -> Self {
+        SmmoResult::Err(v)
+    }
+
+    fn from_ok(v: <SmmoResult<T> as Try>::Ok) -> Self {
+        SmmoResult::Ok(v)
+    }
+}
+
+impl<T: SmmoModel> Display for SmmoResult<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = match self {
+            SmmoResult::Ok(t) => t.to_field().0,
+            SmmoResult::Err(err) => err.to_string(),
+        };
+        f.write_str(&string)
+    }
+}
+
+impl<T: SmmoModel + Debug> Error for SmmoResult<T> {}
 
 // impl<T> SmmoResult<T> {
 //     pub fn map_err_to_msg(
@@ -247,7 +327,7 @@ pub enum SmmoError<T: SmmoModel> {
     InternalError,
     /// Unable to deserialize the api response; most likely means that the response structure changed.
     #[serde(skip)]
-    JsonDecodeError(String),
+    JsonDecodeError(String, String),
     /// Something went wrong when fetching from the smmo api.
     #[serde(skip)]
     ApiError(reqwest::Error),
@@ -266,11 +346,13 @@ impl<T: SmmoModel> Display for SmmoError<T> {
                 }
                 SmmoError::InternalError => "Something went wrong! Check the logs!".into(),
 
-                SmmoError::JsonDecodeError(original) => format!(
+                SmmoError::JsonDecodeError(original, url) => format!(
                     r#"JSON decode error.
+URL: `{}`
 JSON recieved from the api: ```{}```
 Expected type: {}
 "#,
+                    url,
                     original,
                     T::TYPE_NAME
                 ),
