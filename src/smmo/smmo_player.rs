@@ -1,6 +1,6 @@
 use chrono::{serde::ts_seconds_option, DateTime, Duration, Utc};
 use serde::Deserialize;
-use serenity::builder::CreateEmbed;
+use serenity::{builder::CreateEmbed, utils::Colour};
 
 use crate::smmo::date_time::*;
 use crate::smmo::SmmoModel;
@@ -54,6 +54,7 @@ impl SmmoModel for SmmoPlayer {
         embed
             .title(&*self.name)
             .description(safe_mode_response)
+            .colour(Colour::from_rgb(167, 180, 255))
             .field(
                 "General",
                 format!("Level: {}\nGold: {}", self.level, self.gold),
