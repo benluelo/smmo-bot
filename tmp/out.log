@@ -1,0 +1,36 @@
+[2021-04-11 15:50:26 smmo_bot::general::me WARN: src/general/me.rs:71] lkiadsjfj
+[11-Apr-2021 19:19:56 serenity::client::bridge::gateway::shard_queuer WARN: /home/ben/.cargo/registry/src/github.com-1ecc6299db9ec823/serenity-0.10.5/src/client/bridge/gateway/shard_queuer.rs:259] Failed to cleanly shutdown shard 0 when sending message to shard runner: TrySendError { kind: Disconnected } 
+[11-Apr-2021 19:20:01 serenity::client::bridge::gateway::shard_manager WARN: /home/ben/.cargo/registry/src/github.com-1ecc6299db9ec823/serenity-0.10.5/src/client/bridge/gateway/shard_manager.rs:287] Failed to cleanly shutdown shard 0, reached timeout: Elapsed(()) 
+[11-Apr-2021 20:32:34 smmo_bot::general::me WARN: src/general/me.rs:71] lkiadsjfj
+[11-Apr-2021 20:35:57 smmo_bot::general::me WARN: src/general/me.rs:71] lkiadsjfj
+[11-Apr-2021 20:53:12 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[11-Apr-2021 20:54:52 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[11-Apr-2021 20:59:49 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[11-Apr-2021 21:02:54 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[11-Apr-2021 21:04:08 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[11-Apr-2021 21:04:19 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:37] world_boss all
+[11-Apr-2021 21:04:27 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:57] world_boss next
+[11-Apr-2021 21:24:33 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[11-Apr-2021 21:24:42 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[11-Apr-2021 21:24:46 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:37] world_boss all
+[11-Apr-2021 21:28:00 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[11-Apr-2021 21:28:08 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:59] world_boss next
+[13-Apr-2021 03:00:40 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[13-Apr-2021 03:00:48 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:37] world_boss all
+[13-Apr-2021 03:00:56 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:59] world_boss next
+[13-Apr-2021 03:06:32 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[13-Apr-2021 03:07:35 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[13-Apr-2021 03:07:45 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:58] world_boss next
+[13-Apr-2021 03:09:00 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:58] world_boss next
+[13-Apr-2021 03:13:47 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:58] world_boss next
+[13-Apr-2021 03:16:35 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[13-Apr-2021 03:16:54 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:58] world_boss next
+[13-Apr-2021 03:19:20 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[13-Apr-2021 03:19:24 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:58] world_boss next
+[13-Apr-2021 03:22:25 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[13-Apr-2021 03:23:09 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:16] world_boss
+[13-Apr-2021 03:23:21 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:58] world_boss next
+[13-Apr-2021 03:23:48 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:37] world_boss all
+[13-Apr-2021 03:25:18 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:37] world_boss all
+[13-Apr-2021 03:25:27 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:58] world_boss next
+[13-Apr-2021 03:25:32 smmo_bot::general::world_boss WARN: src/general/world_boss.rs:58] world_boss next

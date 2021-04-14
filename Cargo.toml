@@ -1,0 +1,21 @@
+[package]
+name = "smmo-bot"
+version = "0.1.0"
+authors = ["Ben Luelo <benluelo@hotmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serenity = "0.10.5"
+env_logger = "0.8.3"
+serde = "1.0.125"
+serde_json = "1.0.62"
+sqlx = { version = "0.5.1", features = ["runtime-tokio-rustls", "postgres"] }
+log = "0.4.14"
+dotenv = "0.15.0"
+tokio = "1.2.0"
+reqwest = { version = "0.11.2", features = ["json"] }
+log4rs = "1.0.0"
+chrono = "0.4.19"
+const_format = "0.2.13"
