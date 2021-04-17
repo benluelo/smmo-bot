@@ -1,13 +1,12 @@
-use crate::{
-    smmo::{world_boss::WorldBoss, SmmoModel},
-    Player, Reqwest, SmmoError, SmmoResult, DB,
-};
+use crate::{Reqwest, SmmoError};
 use serenity::{
     client::Context,
     framework::standard::{macros::command, CommandResult},
     model::channel::Message,
 };
-use sqlx::query_as;
+use smmo_api::models::world_boss::{WorldBosses};
+
+use crate::to_embed::ToEmbed;
 
 #[command]
 #[aliases(wb)]
@@ -19,8 +18,7 @@ pub async fn world_boss(ctx: &Context, msg: &Message) -> CommandResult {
         .read()
         .await
         .get::<Reqwest>()
-        .ok_or(0u8)
-        .map_err(|_| SmmoResult::<Vec<WorldBoss>>::Err(SmmoError::InternalError))?
+        .ok_or(SmmoError::<WorldBosses>::InternalError)?
         .get_world_bosses()
         .await?;
 
@@ -40,8 +38,7 @@ pub async fn all(ctx: &Context, msg: &Message) -> CommandResult {
         .read()
         .await
         .get::<Reqwest>()
-        .ok_or(0u8)
-        .map_err(|_| SmmoResult::<Vec<WorldBoss>>::Err(SmmoError::InternalError))?
+        .ok_or(SmmoError::<WorldBosses>::InternalError)?
         .get_world_bosses()
         .await?;
 
@@ -61,10 +58,10 @@ pub async fn next(ctx: &Context, msg: &Message) -> CommandResult {
         .read()
         .await
         .get::<Reqwest>()
-        .ok_or(0u8)
-        .map_err(|_| SmmoResult::<Vec<WorldBoss>>::Err(SmmoError::InternalError))?
+        .ok_or(SmmoError::<WorldBosses>::InternalError)?
         .get_world_bosses()
         .await?
+        .0
         .into_iter()
         .reduce(|wb1, wb2| {
             if wb1.enable_time < wb2.enable_time {

@@ -1,13 +1,4 @@
-#![feature(try_trait)]
-
-use std::{error::Error, fmt::Display, marker::PhantomData};
-
-use std::{fmt::Debug, ops::Try};
-
-use crate::{
-    general::*,
-    smmo::{world_boss::WorldBoss, SmmoModel},
-};
+use crate::general::*;
 use dotenv::dotenv;
 use log::LevelFilter;
 use log4rs::{
@@ -25,7 +16,6 @@ use log4rs::{
     filter::threshold::ThresholdFilter,
     Config,
 };
-use serde::Deserialize;
 use serenity::{
     client::{Client, Context},
     framework::{
@@ -35,13 +25,13 @@ use serenity::{
     model::channel::Message,
     prelude::TypeMapKey,
 };
+use smmo_api::client::{SmmoClient, SmmoError};
 use sqlx::PgPool;
-
-use crate::smmo::smmo_player::SmmoPlayer;
 
 pub mod general;
 mod models;
-mod smmo;
+mod to_embed;
+mod utils;
 
 struct Player {
     discord_id: String,
@@ -161,86 +151,11 @@ async fn build_postgres_pool() -> sqlx::Pool<sqlx::Postgres> {
     .unwrap()
 }
 
-pub struct SmmoClient {
-    api_key: String,
-    inner: reqwest::Client,
-}
-
-impl SmmoClient {
-    pub fn new(api_key: String) -> Self {
-        Self {
-            api_key,
-            inner: reqwest::Client::new(),
-        }
-    }
-
-    pub(crate) async fn get_player_by_smmo_id(&self, smmo_id: String) -> SmmoResult<SmmoPlayer> {
-        let url = format!("https://api.simple-mmo.com/v1/player/info/{}", smmo_id);
-        match self
-            .inner
-            .post(&*url)
-            .query(&[("api_key", &*self.api_key)])
-            .send()
-            .await
-        {
-            Ok(res) => {
-                // dbg!(&res.text().await);
-                // SmmoResult::InternalError
-                let req_url = res.url().to_string();
-                match res.text().await {
-                    Ok(text) => match serde_json::from_str::<SmmoResult<SmmoPlayer>>(&*text) {
-                        Ok(json) => json,
-                        Err(why) => SmmoResult::Err(SmmoError::JsonDecodeError(text, req_url)),
-                    },
-                    Err(why) => {
-                        log::error!(target: "smmo_api", "url: {}, error: {}", url, why.to_string());
-                        SmmoResult::Err(SmmoError::ApiError(why))
-                    }
-                }
-            }
-            Err(why) => {
-                log::error!(target: "smmo_api", "url: {}, error: {}", url, why.to_string());
-                SmmoResult::Err(SmmoError::InternalError)
-            }
-        }
-    }
-
-    pub(crate) async fn get_world_bosses(&self) -> SmmoResult<Vec<WorldBoss>> {
-        let url = "https://api.simple-mmo.com/v1/worldboss/all";
-        match self
-            .inner
-            .post(&*url)
-            .query(&[("api_key", &*self.api_key)])
-            .send()
-            .await
-        {
-            Ok(res) => {
-                // dbg!(&res.text().await);
-                // SmmoResult::InternalError
-                let req_url = res.url().to_string();
-                match res.text().await {
-                    Ok(text) => match serde_json::from_str::<SmmoResult<Vec<WorldBoss>>>(&*text) {
-                        Ok(json) => json,
-                        Err(why) => SmmoResult::Err(SmmoError::JsonDecodeError(text, req_url)),
-                    },
-                    Err(why) => {
-                        log::error!(target: "smmo_api", "url: {}, error: {}", url, why.to_string());
-                        SmmoResult::Err(SmmoError::ApiError(why))
-                    }
-                }
-            }
-            Err(why) => {
-                log::error!(target: "smmo_api", "url: {}, error: {}", url, why.to_string());
-                SmmoResult::Err(SmmoError::InternalError)
-            }
-        }
-    }
-}
-
 #[hook]
 async fn after_hook(ctx: &Context, msg: &Message, cmd_name: &str, res: Result<(), CommandError>) {
     //  Print out an error if it happened
     if let Err(err) = res {
+        log::error!(target: "command_errors", "{}, {}", cmd_name, err);
         let _ = msg
             .channel_id
             .send_message(&ctx.http, |cm| {
@@ -252,46 +167,6 @@ async fn after_hook(ctx: &Context, msg: &Message, cmd_name: &str, res: Result<()
             .await;
     }
 }
-
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-pub enum SmmoResult<T: SmmoModel> {
-    Ok(T),
-    Err(SmmoError<T>),
-}
-
-impl<T: SmmoModel> Try for SmmoResult<T> {
-    type Ok = T;
-
-    type Error = SmmoError<T>;
-
-    fn into_result(self) -> Result<<SmmoResult<T> as Try>::Ok, Self::Error> {
-        match self {
-            SmmoResult::Ok(ok) => Ok(ok),
-            SmmoResult::Err(err) => Err(err),
-        }
-    }
-
-    fn from_error(v: Self::Error) -> Self {
-        SmmoResult::Err(v)
-    }
-
-    fn from_ok(v: <SmmoResult<T> as Try>::Ok) -> Self {
-        SmmoResult::Ok(v)
-    }
-}
-
-impl<T: SmmoModel> Display for SmmoResult<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let string = match self {
-            SmmoResult::Ok(t) => t.to_field().0,
-            SmmoResult::Err(err) => err.to_string(),
-        };
-        f.write_str(&string)
-    }
-}
-
-impl<T: SmmoModel + Debug> Error for SmmoResult<T> {}
 
 // impl<T> SmmoResult<T> {
 //     pub fn map_err_to_msg(
@@ -316,55 +191,3 @@ impl<T: SmmoModel + Debug> Error for SmmoResult<T> {}
 //         }
 //     }
 // }
-
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-pub enum SmmoError<T: SmmoModel> {
-    /// Error from the api; means the api_key is not valid.
-    Unauthenticated,
-    /// Something went wrong internally, check the logs.
-    #[serde(skip)]
-    InternalError,
-    /// Unable to deserialize the api response; most likely means that the response structure changed.
-    #[serde(skip)]
-    JsonDecodeError(String, String),
-    /// Something went wrong when fetching from the smmo api.
-    #[serde(skip)]
-    ApiError(reqwest::Error),
-    /// Used to appease the typechecker. should never be constructed.
-    #[serde(skip)]
-    PhantomData(PhantomData<T>),
-}
-
-impl<T: SmmoModel> Display for SmmoError<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}",
-            match self {
-                SmmoError::Unauthenticated => {
-                    "Authentication error with the SMMO api. Check the api key.".into()
-                }
-                SmmoError::InternalError => "Something went wrong! Check the logs!".into(),
-
-                SmmoError::JsonDecodeError(original, url) => format!(
-                    r#"JSON decode error.
-URL: `{}`
-JSON recieved from the api: ```{}```
-Expected type: {}
-"#,
-                    url,
-                    original,
-                    T::TYPE_NAME
-                ),
-
-                SmmoError::ApiError(error) => format!("Error with the SMMO api: ```{}```", error),
-
-                SmmoError::PhantomData(_) => {
-                    unreachable!("PhantomData variant should never be constructed.")
-                }
-            },
-        ))
-    }
-}
-
-impl<T: SmmoModel + std::fmt::Debug> std::error::Error for SmmoError<T> {}
