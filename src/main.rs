@@ -1,4 +1,3 @@
-use crate::general::*;
 use dotenv::dotenv;
 use log::LevelFilter;
 use log4rs::{
@@ -28,9 +27,12 @@ use serenity::{
 use smmo_api::client::{SmmoClient, SmmoError};
 use sqlx::PgPool;
 
+use crate::{general::*, item::*};
 pub mod general;
+pub mod item;
 mod models;
 mod to_embed;
+mod graph;
 mod utils;
 
 struct Player {
@@ -137,6 +139,7 @@ fn build_command_framework() -> StandardFramework {
         })
         .after(after_hook)
         .group(&GENERAL_GROUP)
+        .group(&ITEM_GROUP)
 }
 
 async fn build_postgres_pool() -> sqlx::Pool<sqlx::Postgres> {

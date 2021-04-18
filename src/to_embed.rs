@@ -2,6 +2,7 @@ use crate::utils::duration_pretty;
 use chrono::{Duration, Utc};
 use serenity::builder::CreateEmbed;
 use smmo_api::models::{
+    item::Item,
     orphanage::Orphanage,
     smmo_player::SmmoPlayer,
     world_boss::{WorldBoss, WorldBosses},
@@ -146,5 +147,18 @@ impl ToEmbed for Orphanage {
             },
             true,
         )
+    }
+}
+
+impl ToEmbed for Item {
+    fn to_embed<'a, 'b>(&'a self, embed: &'b mut CreateEmbed) -> &'b mut CreateEmbed {
+        embed
+            .title(self.name.clone())
+            .description(self.description.as_ref().unwrap_or(&"".to_string()))
+            .color(self.rarity.colour())
+    }
+
+    fn to_field(&self) -> (String, String, bool) {
+        (self.name.clone(), self.rarity.to_string(), true)
     }
 }

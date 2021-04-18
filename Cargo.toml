@@ -19,3 +19,4 @@ chrono = "0.4.19"
 sqlx = { version = "0.5.1", features = ["runtime-tokio-rustls", "postgres"] }
 tokio = "1.2.0"
 smmo-api = { path = "../smmo-api" }
+plotters = "0.3.0"

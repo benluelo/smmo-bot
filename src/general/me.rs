@@ -21,8 +21,7 @@ pub async fn me(ctx: &Context, msg: &Message) -> CommandResult {
         .read()
         .await
         .get::<DB>()
-        .ok_or(0u8)
-        .map_err(|_| SmmoError::<SmmoPlayer>::InternalError)?
+        .ok_or(SmmoError::<SmmoPlayer>::InternalError)?
         .clone();
 
     if let Some(player) = query_as!(
