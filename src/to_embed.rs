@@ -2,6 +2,7 @@ use crate::utils::duration_pretty;
 use chrono::{Duration, Utc};
 use serenity::builder::CreateEmbed;
 use smmo_api::models::{
+    orphanage::Orphanage,
     smmo_player::SmmoPlayer,
     world_boss::{WorldBoss, WorldBosses},
 };
@@ -106,5 +107,44 @@ impl ToEmbed for WorldBosses {
 
     fn to_field(&self) -> (String, String, bool) {
         ("test".into(), "test".into(), true)
+    }
+}
+
+impl ToEmbed for Orphanage {
+    fn to_embed<'a, 'b>(&'a self, embed: &'b mut CreateEmbed) -> &'b mut CreateEmbed {
+        embed
+            .title("Orphanage")
+            .description(if self.current_amount >= self.max_amount {
+                "Goal reached!".into()
+            } else {
+                format!(
+                    "Amount remaining: {}\n({}/{}",
+                    self.max_amount - self.current_amount,
+                    self.current_amount,
+                    self.max_amount
+                )
+            })
+            .color(if self.current_amount >= self.max_amount {
+                0x00FF00
+            } else {
+                0xFF0000
+            })
+    }
+
+    fn to_field(&self) -> (String, String, bool) {
+        (
+            "Orphanage".into(),
+            if self.current_amount >= self.max_amount {
+                "Goal reached!".into()
+            } else {
+                format!(
+                    "Amount remaining: {}\n({}/{}",
+                    self.max_amount - self.current_amount,
+                    self.current_amount,
+                    self.max_amount
+                )
+            },
+            true,
+        )
     }
 }

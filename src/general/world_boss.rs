@@ -4,7 +4,7 @@ use serenity::{
     framework::standard::{macros::command, CommandResult},
     model::channel::Message,
 };
-use smmo_api::models::world_boss::{WorldBosses};
+use smmo_api::models::world_boss::WorldBosses;
 
 use crate::to_embed::ToEmbed;
 
