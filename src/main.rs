@@ -29,10 +29,10 @@ use sqlx::PgPool;
 
 use crate::{general::*, item::*};
 pub mod general;
+mod graph;
 pub mod item;
 mod models;
 mod to_embed;
-mod graph;
 mod utils;
 
 struct Player {
@@ -53,7 +53,7 @@ impl TypeMapKey for Reqwest {
 }
 
 const PATTERN: &str = "[{d(%v %T)(utc)} {target} {highlight({level})}: {file}:{line}] {message}{n}";
-const LOG_LEVEL: LevelFilter = LevelFilter::Warn;
+const LOG_LEVEL: LevelFilter = LevelFilter::Info;
 const FILE_PATH: &str = "./tmp/out.log";
 
 #[tokio::main]
@@ -126,7 +126,7 @@ fn build_log_config() -> Config {
             Root::builder()
                 .appender("logfile")
                 .appender("stderr")
-                .build(LevelFilter::Warn),
+                .build(LOG_LEVEL),
         )
         .unwrap()
 }

@@ -72,8 +72,8 @@ impl ToEmbed for WorldBoss {
                 format!(
                     "**`{:░>10}`**\n{}/{} ({}%)",
                     "█".repeat((health_percentage * 10).try_into().unwrap()),
-                    self.current_hp,
-                    self.max_hp,
+                    self.current_hp as f64,
+                    self.max_hp as f64,
                     health_percentage * 100
                 ),
                 true,
@@ -155,7 +155,7 @@ impl ToEmbed for Item {
         embed
             .title(self.name.clone())
             .description(self.description.as_ref().unwrap_or(&"".to_string()))
-            .color(self.rarity.colour())
+            .color(self.rarity.colour_hex())
     }
 
     fn to_field(&self) -> (String, String, bool) {
