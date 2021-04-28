@@ -128,7 +128,7 @@ pub async fn query(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
     ];
 
     log::warn!("generating chart");
-    let file = (&*pie_chart(&items).unwrap(), "chart.bmp");
+    // let file = (pie_chart(&items).unwrap(), "chart.bmp");
     let _ = msg
         .channel_id
         .send_message(&ctx.http, |cm| {

@@ -1,9 +1,11 @@
-use plotters::prelude::*;
 use smmo_api::models::item::ItemRarity;
 use std::{f32::consts::PI, io::Write, usize};
-use std::{fs::File, iter};
-use svg::node::element::path::Data;
+use svg::node::{
+    self,
+    element::{path::Data, Path, Text},
+};
 use svg::Document;
+use usvg::fontdb;
 // use plotters::style::BackendColor;
 
 const ACCURACY: f32 = 100.0;
@@ -12,104 +14,103 @@ const SCALE: u32 = 100;
 
 pub fn pie_chart(
     items: &[(u32, (u8, u8, u8), &str)],
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let total = items.iter().fold(0, |prev, (i, _, _)| i + prev);
 
-    let size = items.len();
+    let item_text_height = 50 / items.len();
     // let items = items.iter().peekable();
 
-    let document = Document::new().set("viewBox", (0, 0, 50, 100));
+    let mut document = Document::new().set("viewBox", (0, 0, 100, 50));
 
-    let data = Data::new();
+    let radius = 20f32;
 
-    // let mut items = items.unz;
-    let size = 100 * SCALE as usize * 50 * SCALE as usize * 4;
-    let mut buffer = String::with_capacity(size);
-    dbg!(buffer.len());
-    {
-        let root_area =
-            SVGBackend::with_string(&mut buffer, (100 * SCALE, 50 * SCALE)).into_drawing_area();
+    let center = (25f32, 25f32);
 
-        let (left, right) = root_area.split_horizontally(50 * SCALE);
+    let mut previous_slice_end_angle = 0.0;
 
-        let right = right.margin(6 * SCALE, 3 * SCALE, 1 * SCALE, 1 * SCALE);
-        let right_half = right.split_evenly((size, 1));
+    for (index, (slice, (r, g, b), text)) in items.iter().enumerate() {
+        let path = Path::new();
 
-        root_area.fill(&WHITE)?;
-        // left.fill(&GREEN)?;
-        // right_half[4].fill(&RED)?;
+        let slice_angle = (*slice as f32 / total as f32) * (2.0 * PI);
 
-        let root_area = root_area.titled("Item Distribution", ("sans-serif", 4 * SCALE))?;
+        let start_angle = previous_slice_end_angle;
+        let end_angle = previous_slice_end_angle + slice_angle;
 
-        // root_area.
-        let radius = 20f32 * (SCALE as f32);
+        previous_slice_end_angle = end_angle;
 
-        let center = (25f32, 25f32);
+        // move to arc start point
+        // arc to arc end point
+        // line to center
+        // enclose
+        let data = Data::new()
+            .move_to((
+                // x
+                center.0 + (radius * start_angle.cos()),
+                // y
+                center.1 + (radius * start_angle.sin()),
+            ))
+            .elliptical_arc_to((
+                radius,                                // rx
+                radius,                                // ry
+                0,                                     // x-axis-rotation
+                0, // large-arc-flag TODO: check if slice is over 50%
+                1, // sweep-flag
+                center.0 + (radius * end_angle.cos()), // x
+                center.1 + (radius * end_angle.sin()), // y
+            ))
+            .line_to((
+                center.0, // x
+                center.1, // y
+            ));
 
-        // let mut all_area_series = vec![];
-        let mut previous_slice_end_angle = 0.0;
+        let colour = format!("rgb({},{},{})", r, g, b);
+        let path = Path::new().set("d", data).set("fill", &*colour);
 
-        for (index, (slice, colour, text)) in items.iter().enumerate() {
-            let slice_angle = (*slice as f32 / total as f32) * (2.0 * PI);
+        let text = Text::new()
+            .set("x", 50)
+            .set("y", (item_text_height * index) + (item_text_height))
+            .set("fill", colour)
+            .set("font-family", "sans serif")
+            .set("font-size", item_text_height)
+            // .set("textLength", 50)
+            // .set("lengthAdjust", "spacingAndGlyphs")
+            .add(node::Text::new(*text));
 
-            let start_angle = previous_slice_end_angle;
-            let end_angle = previous_slice_end_angle + slice_angle;
-
-            previous_slice_end_angle = end_angle;
-
-            let arc_points = ((start_angle * ACCURACY).floor() as i32..(if index == size - 1 {
-                // you gotta add the extra lil bit or else theres a gap between the first and last slices
-                (((2.0 * PI) + 0.01) * ACCURACY).ceil() as i32
-            } else {
-                (end_angle * ACCURACY).ceil() as i32
-            }))
-                .map(|angle| {
-                    (
-                        center.0 + (radius * ((angle as f32) / ACCURACY).cos()),
-                        center.1 + (radius * ((angle as f32) / ACCURACY).sin()),
-                    )
-                });
-
-            let slice_area = iter::once(center)
-                .chain(arc_points)
-                .chain(iter::once(center));
-            all_area_series.push((slice_area, colour, text));
-        }
-
-        #[allow(clippy::many_single_char_names)]
-        for (index, (area, (r, g, b), text)) in all_area_series.into_iter().enumerate() {
-            left.draw(&Polygon::new(
-                area.clone()
-                    .map(|(x, y)| (x as i32, y as i32))
-                    .collect::<Vec<_>>()
-                    .as_ref(),
-                RGBColor(*r, *g, *b).filled(), /* .filled() */
-            ))?; /*  _series(); */
-            right_half[index].draw_text(
-                text,
-                &TextStyle::from(("sans-serif", 4 * SCALE).into_font())
-                    .color(&RGBColor(*r, *g, *b)), /* (RGBColor(*r, *g, *b), 30) */
-                (0, 0),
-            )?;
-        }
+        document = document.add(path).add(text);
     }
 
-    Ok(buffer)
-}
+    let s = document.to_string();
+    let mut fontdb = usvg::fontdb::Database::new();
+    let font_data = include_bytes!("../../data/Roboto-Bold.ttf").to_vec();
+    fontdb.load_font_data(font_data);
+    let tree = usvg::Tree::from_str(
+        &s,
+        &usvg::Options {
+            // fontdb,
+            ..usvg::Options::default()
+        },
+    )?;
 
-fn center_of_area<DB, CT>(left: &DrawingArea<DB, CT>) -> (f32, f32)
-where
-    DB: DrawingBackend,
-    CT: CoordTranslate,
-{
-    let range = left.get_pixel_range();
-    let x_mid = range.0.start + (range.0.end / 2);
-    let y_mid = range.1.start + (range.1.end / 2);
-    (x_mid as f32, y_mid as f32)
+    let size = tree.svg_node().size.to_screen_size();
+    let mut pixmap =
+        tiny_skia::Pixmap::new(size.width() * 10, size.height() * 10).ok_or("pad pixmap")?;
+    dbg!(&pixmap);
+    println!("{}", s);
+    let img = resvg::render(
+        &tree,
+        usvg::FitTo::Height(size.height() * 10),
+        pixmap.as_mut(),
+    )
+    .ok_or("bad render")?;
+    // img.save_png(outfile)?;
+    // dbg!(data);
+
+    Ok(pixmap.encode_png()?)
 }
 
 #[test]
 fn test_pie_chart() {
+    env_logger::init();
     let items = [
         (
             696u32,
@@ -154,5 +155,53 @@ fn test_pie_chart() {
     ];
     let chart = pie_chart(&items).unwrap();
 
-    File::open("test.svg").unwrap().write(chart.as_bytes());
+    std::fs::File::create("test.png")
+        .unwrap()
+        .write_all(&chart)
+        .unwrap();
+}
+
+#[test]
+fn test_asdf() {
+    std::env::set_var("RUST_LOG", "fontdb=trace");
+    env_logger::init();
+
+    let mut db = fontdb::Database::new();
+    let now = std::time::Instant::now();
+    db.load_system_fonts();
+    db.set_serif_family("Times New Roman");
+    db.set_sans_serif_family("Arial");
+    db.set_cursive_family("Comic Sans MS");
+    db.set_fantasy_family("Impact");
+    db.set_monospace_family("Courier New");
+    println!(
+        "Loaded {} font faces in {}ms.",
+        db.len(),
+        now.elapsed().as_millis()
+    );
+
+    const FAMILY_NAME: &str = "Times New Roman";
+    let query = fontdb::Query {
+        families: &[fontdb::Family::Name(FAMILY_NAME), fontdb::Family::SansSerif],
+        weight: fontdb::Weight::BOLD,
+        ..fontdb::Query::default()
+    };
+
+    let now = std::time::Instant::now();
+    match db.query(&query) {
+        Some(id) => {
+            let (src, index) = db.face_source(id).unwrap();
+            if let fontdb::Source::File(ref path) = &*src {
+                println!(
+                    "Font '{}':{} found in {}ms.",
+                    path.display(),
+                    index,
+                    now.elapsed().as_micros() as f64 / 1000.0
+                );
+            }
+        }
+        None => {
+            println!("Error: '{}' not found.", FAMILY_NAME);
+        }
+    }
 }

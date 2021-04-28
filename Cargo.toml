@@ -21,3 +21,6 @@ tokio = "1.2.0"
 smmo-api = { path = "../smmo-api" }
 plotters = "0.3.0"
 svg = "0.9.1"
+usvg = "0.14.1"
+resvg = "0.14.1"
+tiny-skia = "0.5.1"
